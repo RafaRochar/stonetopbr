@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<script>try{var t=localStorage.getItem('stonetop:tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa · Stonetop</title>
+<meta name="description" content="Mapa de Stonetop compartilhado: marque onde cada jogador está, sincronizado online.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Caveat:wght@500&family=EB+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body class="pagina-mapa">
+<header class="barra">
+  <a class="voltar" href="index.html">&larr; Fichas</a>
+  <h1>Mapa</h1>
+  <span class="status" id="status" aria-live="polite"></span>
+  <div class="acoes">
+    <button class="btn destaque" id="online" type="button" title="Pegar o link deste mapa para mandar para o grupo">Compartilhar</button>
+  </div>
+</header>
+<div class="area-mapa">
+  <div class="abas-mapa" role="tablist" aria-label="Escolher mapa">
+    <button class="aba-mapa" role="tab" data-mapa="lar" type="button">Stonetop</button>
+    <button class="aba-mapa" role="tab" data-mapa="arredores" type="button">Arredores</button>
+    <button class="aba-mapa" role="tab" data-mapa="regiao" type="button">Região</button>
+  </div>
+  <div id="mapa" aria-label="Mapa"></div>
+  <aside class="painel">
+    <h2>Jogadores</h2>
+    <ul id="lista-jogadores" class="jogadores"></ul>
+    <form id="novo-jogador" class="novo-jogador" autocomplete="off">
+      <label for="nome-jogador">Novo jogador</label>
+      <input id="nome-jogador" name="nome" type="text" maxlength="40" placeholder="Nome do personagem" required>
+      <div class="cores" id="cores" aria-label="Cor do pino"></div>
+      <button class="btn-claro" type="submit">Pôr no mapa</button>
+    </form>
+    <p class="dica-mapa">Arraste o pino para mover. O pino entra no centro do mapa que está na tela. Em outro mapa, use <strong>Trazer</strong> na lista.</p>
+  </aside>
+</div>
+<dialog id="dialogo-online" class="dialogo">
+  <h2>Mapa online</h2>
+  <p>Mande este link para o grupo. Quem abrir vê os mesmos pinos e pode mover o seu. As mudanças aparecem para todos em poucos segundos.</p>
+  <div class="linha-link">
+    <input id="link-online" type="text" readonly aria-label="Link do mapa online">
+    <button class="btn-claro" id="copiar-link" type="button">Copiar</button>
+  </div>
+  <p class="aviso">Guarde o link: é a única chave do mapa.</p>
+  <div class="rodape-dialogo fim">
+    <button class="btn-claro" id="fechar-dialogo" type="button">Fechar</button>
+  </div>
+</dialog>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="assets/mapa.js"></script>
+</body>
+</html>
