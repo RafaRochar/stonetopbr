@@ -109,7 +109,10 @@ textarea.texto { resize: none; overflow: auto; padding-top: .2cqw; scrollbar-wid
 
 .btn.destaque { background: var(--destaque); border-color: var(--destaque); }
 .btn.destaque:hover { background: var(--destaque-claro); border-color: var(--destaque-claro); }
-.modo-online .barra .status::before {
+.barra .status[data-tipo="alerta"] { opacity: 1; color: #f0b86a; font-style: normal; }
+.barra .status[data-tipo="alerta"]::before { content: "⚠ "; }
+.rodape-dialogo.fim { justify-content: flex-end; }
+.modo-online .barra .status[data-tipo="ok"]::before {
   content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%;
   background: #6fbf73; vertical-align: 1px;
 }

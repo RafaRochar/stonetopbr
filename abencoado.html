@@ -16,7 +16,8 @@
   <h1>O Abençoado</h1>
   <span class="status" id="status" aria-live="polite"></span>
   <div class="acoes">
-    <button class="btn destaque" id="online" type="button" title="Criar um link para preencher esta ficha de qualquer lugar">Colocar online</button>
+    <button class="btn destaque" id="online" type="button" title="Pegar o link desta ficha para mandar para o grupo">Compartilhar</button>
+    <button class="btn" id="nova" type="button" title="Começar outra ficha, em branco">Nova ficha</button>
     <button class="btn" id="exportar" type="button" title="Baixar um arquivo com tudo o que foi preenchido">Exportar</button>
     <button class="btn" id="importar" type="button" title="Carregar um arquivo exportado antes">Importar</button>
     <button class="btn" id="imprimir" type="button" title="Imprimir ou salvar como PDF">Imprimir</button>
@@ -25,7 +26,7 @@
   <input type="file" id="arquivo" accept=".json,application/json" hidden>
 </header>
 <main id="folhas"></main>
-<p class="dica">Clique nos quadradinhos e bolinhas para marcar; clique nos espaços em branco para escrever. Use <strong>Colocar online</strong> para preencher de qualquer lugar e compartilhar a ficha com o grupo.</p>
+<p class="dica">Clique nos quadradinhos e bolinhas para marcar; clique nos espaços em branco para escrever. A ficha é salva online sozinha. Use <strong>Compartilhar</strong> para mandar o link para o grupo.</p>
 <dialog id="dialogo-online" class="dialogo">
   <h2>Ficha online</h2>
   <p>Mande este link para quem vai preencher. Qualquer pessoa com ele vê e edita a mesma ficha, de qualquer aparelho. As mudanças aparecem para todos em poucos segundos.</p>
@@ -34,8 +35,7 @@
     <button class="btn-claro" id="copiar-link" type="button">Copiar</button>
   </div>
   <p class="aviso">Guarde o link: é a única chave da ficha. Quem não tiver o link não encontra a ficha.</p>
-  <div class="rodape-dialogo">
-    <button class="btn-texto" id="sair-online" type="button">Voltar para a ficha local</button>
+  <div class="rodape-dialogo fim">
     <button class="btn-claro" id="fechar-dialogo" type="button">Fechar</button>
   </div>
 </dialog>
