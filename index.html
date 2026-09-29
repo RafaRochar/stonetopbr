@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<script>try{var t=localStorage.getItem('stonetop:tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fichas de Stonetop</title>
+<meta name="description" content="Fichas interativas de Stonetop: O Abençoado, O Suposto Herói e O Vilarejo.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Caveat:wght@500&family=EB+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+<div class="capa">
+  <header>
+    <h1>Stonetop</h1>
+    <p class="sub">Fichas interativas. Escolha uma, marque as opções e escreva direto nela. Coloque online para preencher de qualquer lugar.</p>
+  </header>
+  <div class="grade">
+    <a class="cartao" href="abencoado.html">
+      <div class="miniatura" style="background-image:url('img/abencoado-1.jpg');background-position:100% 0;background-size:200% auto"></div>
+      <div class="corpo">
+        <h2>O Abençoado</h2>
+        <p>Filho de Danu, com a bolsa sagrada, o Estoque e os rituais da terra.</p>
+        <span class="ir">Abrir ficha &rarr;</span>
+      </div>
+    </a>
+    <a class="cartao" href="suposto-heroi.html">
+      <div class="miniatura" style="background-image:url('img/suposto-heroi-1.jpg');background-position:100% 0;background-size:200% auto"></div>
+      <div class="corpo">
+        <h2>O Suposto Herói</h2>
+        <p>O destino pôs as mãos em você. Medos, raivas e potencial para grandeza.</p>
+        <span class="ir">Abrir ficha &rarr;</span>
+      </div>
+    </a>
+    <a class="cartao" href="vilarejo.html">
+      <div class="miniatura" style="background-image:url('img/vilarejo-1.jpg');background-position:0 0;background-size:115% auto"></div>
+      <div class="corpo">
+        <h2>O Vilarejo</h2>
+        <p>A ficha compartilhada de Stonetop: melhorias, bens, residentes e vizinhos.</p>
+        <span class="ir">Abrir ficha &rarr;</span>
+      </div>
+    </a>
+  </div>
+  <section class="recentes" id="recentes" hidden>
+    <h3>Fichas online abertas neste navegador</h3>
+    <ul id="lista-recentes"></ul>
+  </section>
+  <section class="como">
+    <h3>Como funciona</h3>
+    <ul>
+      <li>Sem link, o que você preenche fica guardado <strong>só neste navegador, neste aparelho</strong>.</li>
+      <li><strong>Colocar online</strong> cria um link para a ficha. Mande o link para a jogadora: ela preenche em casa, você abre o mesmo link no seu computador e vê tudo, atualizando sozinho.</li>
+      <li><strong>Exportar</strong> baixa um arquivo com a ficha e <strong>Importar</strong> carrega de volta. Serve de cópia de segurança.</li>
+      <li><strong>Imprimir</strong> gera a ficha preenchida em papel ou em PDF (escolha "Salvar como PDF" na janela de impressão).</li>
+    </ul>
+  </section>
+</div>
+<script>
+(function () {
+  var lista = [];
+  try { lista = JSON.parse(localStorage.getItem('stonetop:recentes') || '[]'); } catch (e) {}
+  if (!lista.length) return;
+  var ul = document.getElementById('lista-recentes');
+  lista.forEach(function (x) {
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = x.tipo + '.html#c=' + encodeURIComponent(x.c);
+    a.textContent = (x.nome || 'Sem nome') + ' · ' + x.titulo;
+    var s = document.createElement('span');
+    s.textContent = new Date(x.em).toLocaleDateString('pt-BR');
+    li.appendChild(a); li.appendChild(s); ul.appendChild(li);
+  });
+  document.getElementById('recentes').hidden = false;
+})();
+</script>
+</body>
+</html>
