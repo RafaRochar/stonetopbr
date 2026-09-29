@@ -40,6 +40,11 @@
   let estado = lerJSON(chaveLocal());
   const avisar = (t, tipo = '') => { status.textContent = t; status.dataset.tipo = tipo; };
 
+  // notas livres dos mapas (ver prepararNotas); declaradas antes da construção, que já as usa
+  const notas = new Map();        // nome -> elemento .nota
+  const paginasNotas = new Map(); // nº da página -> <section>
+  const LARGURA_NOTA = 16;        // % da largura da página
+
   // ---------- construção
   F.paginas.forEach((p, i) => {
     const sec = document.createElement('section');
@@ -77,8 +82,124 @@
       campos.set(c.n, el);
       sec.appendChild(el);
     }
+    if (p.notas) prepararNotas(sec, i + 1);
     folhas.appendChild(sec);
   });
+
+  // ---------- notas livres (mapas da Ficha do Mestre)
+  // Cada nota é um campo "p<pág>.nota_<id>" cujo valor é "x;y;texto" (x/y em % da página),
+  // então ela grava e sincroniza pelo mesmo caminho dos outros campos.
+  function lerNota(v) {
+    const m = /^(-?[\d.]+);(-?[\d.]+);([\s\S]*)$/.exec(v || '');
+    return m ? { x: +m[1], y: +m[2], t: m[3] } : null;
+  }
+  const valorNota = (x, y, t) => `${x.toFixed(2)};${y.toFixed(2)};${t}`;
+
+  function prepararNotas(sec, pag) {
+    sec.classList.add('com-notas');
+    paginasNotas.set(pag, sec);
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'nova-nota';
+    botao.textContent = '+ Nota';
+    botao.title = 'Adicionar uma nota neste mapa (ou dê um clique duplo no lugar certo)';
+    let desloca = 0;
+    botao.addEventListener('click', () => { criarNota(pag, 8 + (desloca % 5) * 4, 10 + (desloca % 5) * 6); desloca++; });
+    sec.appendChild(botao);
+    sec.addEventListener('dblclick', (e) => {
+      if (e.target !== sec && e.target.tagName !== 'IMG') return;
+      const r = sec.getBoundingClientRect();
+      criarNota(pag, (e.clientX - r.left) / r.width * 100 - 2, (e.clientY - r.top) / r.height * 100 - 2);
+    });
+  }
+
+  function criarNota(pag, x, y) {
+    const id = `p${pag}.nota_${Math.random().toString(36).slice(2, 10)}`;
+    x = Math.min(Math.max(x, 0), 100 - LARGURA_NOTA);
+    y = Math.min(Math.max(y, 0), 94);
+    alterar(id, valorNota(x, y, ''), false);
+    sincronizarNotas();
+    notas.get(id)?.querySelector('textarea').focus();
+  }
+
+  function elementoNota(n) {
+    const pag = +/^p(\d+)\./.exec(n)[1];
+    const sec = paginasNotas.get(pag);
+    if (!sec) return null;
+    const el = document.createElement('div');
+    el.className = 'nota';
+    el.style.width = `${LARGURA_NOTA}%`;
+    const barra = document.createElement('div');
+    barra.className = 'nota-barra';
+    barra.title = 'Arraste para mover';
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'nota-apagar';
+    x.textContent = '×';
+    x.setAttribute('aria-label', 'Apagar nota');
+    x.addEventListener('click', () => {
+      if (lerNota(estado[n])?.t && !confirm('Apagar esta nota?')) return;
+      alterar(n, null, false);
+      sincronizarNotas();
+    });
+    barra.appendChild(x);
+    const ta = document.createElement('textarea');
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Nota no mapa');
+    ta.addEventListener('input', () => {
+      const v = lerNota(estado[n]) || { x: 0, y: 0 };
+      alterar(n, valorNota(v.x, v.y, ta.value), false);
+    });
+    ta.addEventListener('blur', () => {
+      // nota criada e deixada em branco some sozinha
+      if (!ta.value.trim() && estado[n] !== undefined) { alterar(n, null, false); sincronizarNotas(); }
+    });
+    el.append(barra, ta);
+
+    // arrastar pela barra (mouse ou dedo)
+    barra.addEventListener('pointerdown', (e) => {
+      if (e.target === x) return;
+      e.preventDefault();
+      barra.setPointerCapture(e.pointerId);
+      const r = sec.getBoundingClientRect();
+      const inicio = lerNota(estado[n]);
+      const ox = e.clientX, oy = e.clientY;
+      let nx = inicio.x, ny = inicio.y;
+      const mover = (ev) => {
+        nx = Math.min(Math.max(inicio.x + (ev.clientX - ox) / r.width * 100, 0), 100 - LARGURA_NOTA);
+        ny = Math.min(Math.max(inicio.y + (ev.clientY - oy) / r.height * 100, 0), 97);
+        el.style.left = `${nx}%`; el.style.top = `${ny}%`;
+      };
+      const soltar = () => {
+        barra.removeEventListener('pointermove', mover);
+        barra.removeEventListener('pointerup', soltar);
+        barra.removeEventListener('pointercancel', soltar);
+        if (nx !== inicio.x || ny !== inicio.y) alterar(n, valorNota(nx, ny, lerNota(estado[n]).t), false);
+      };
+      barra.addEventListener('pointermove', mover);
+      barra.addEventListener('pointerup', soltar);
+      barra.addEventListener('pointercancel', soltar);
+    });
+
+    sec.appendChild(el);
+    return el;
+  }
+
+  // cria/atualiza/remove as notas a partir do estado (depois de carregar ou receber mudanças)
+  function sincronizarNotas(foco = document.activeElement) {
+    if (!paginasNotas.size) return;
+    for (const [n, v] of Object.entries(estado)) {
+      if (!/^p\d+\.nota_/.test(n)) continue;
+      const d = lerNota(v);
+      if (!d) continue;
+      let el = notas.get(n);
+      if (!el) { el = elementoNota(n); if (!el) continue; notas.set(n, el); }
+      el.style.left = `${d.x}%`; el.style.top = `${d.y}%`;
+      const ta = el.querySelector('textarea');
+      if (ta !== foco && ta.value !== d.t) ta.value = d.t;
+    }
+    for (const [n, el] of notas) if (estado[n] === undefined) { el.remove(); notas.delete(n); }
+  }
 
   function rotulo(n) {
     return n.replace(/^p\d+\./, '').replace(/_/g, ' ').replace(/(\D)(\d+)/g, '$1 $2');
@@ -90,7 +211,7 @@
     if (el.tagName === 'BUTTON') el.setAttribute('aria-checked', estado[n] ? 'true' : 'false');
     else if (el.value !== (estado[n] || '')) el.value = estado[n] || '';
   }
-  const pintarTudo = () => campos.forEach((_, n) => pintar(n));
+  const pintarTudo = () => { campos.forEach((_, n) => pintar(n)); sincronizarNotas(); };
 
   // ---------- por que não deu para salvar online (vira texto na barra)
   let semServidor = ''; // motivo; vazio = ainda não falhou
@@ -232,6 +353,7 @@
       estado = novos;
       gravarLocal();
       campos.forEach((el, n) => { if (el !== foco) pintar(n); });
+      sincronizarNotas(foco);
       if (!pendentes.size) avisar('Salvo online', 'ok');
     } catch (e) {
       console.warn('ficha online:', e);

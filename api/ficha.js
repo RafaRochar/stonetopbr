@@ -12,7 +12,7 @@
 // Variáveis de ambiente (criadas pela integração Upstash da Vercel):
 //   KV_REST_API_URL + KV_REST_API_TOKEN   ou   UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
 
-const TIPOS = new Set(['abencoado', 'suposto-heroi', 'vilarejo']);
+const TIPOS = new Set(['abencoado', 'suposto-heroi', 'raposa', 'vilarejo', 'mestre']);
 const CODIGO = /^[a-z0-9]{8,32}$/;
 const CAMPO = /^p\d{1,2}\.[a-zA-Z0-9_]{1,60}$/;
 const MAX_VALOR = 4000;

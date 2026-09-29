@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<script>try{var t=localStorage.getItem('stonetop:tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha do Mestre · Stonetop</title>
+<meta name="description" content="Ficha interativa de Ficha do Mestre para Stonetop: marque as opções e preencha os campos direto no navegador.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Caveat:wght@500&family=EB+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+<header class="barra">
+  <a class="voltar" href="index.html">&larr; Fichas</a>
+  <h1>Ficha do Mestre</h1>
+  <span class="status" id="status" aria-live="polite"></span>
+  <div class="acoes">
+    <button class="btn destaque" id="online" type="button" title="Pegar o link desta ficha para mandar para o grupo">Compartilhar</button>
+    <button class="btn" id="nova" type="button" title="Começar outra ficha, em branco">Nova ficha</button>
+    <button class="btn" id="exportar" type="button" title="Baixar um arquivo com tudo o que foi preenchido">Exportar</button>
+    <button class="btn" id="importar" type="button" title="Carregar um arquivo exportado antes">Importar</button>
+    <button class="btn" id="imprimir" type="button" title="Imprimir ou salvar como PDF">Imprimir</button>
+    <button class="btn perigo" id="limpar" type="button">Limpar</button>
+  </div>
+  <input type="file" id="arquivo" accept=".json,application/json" hidden>
+</header>
+<main id="folhas"></main>
+<p class="dica">Clique nos quadradinhos e bolinhas para marcar; clique nos espaços em branco para escrever. A ficha é salva online sozinha. Use <strong>Compartilhar</strong> para mandar o link para o grupo.</p>
+<dialog id="dialogo-online" class="dialogo">
+  <h2>Ficha online</h2>
+  <p>Mande este link para quem vai preencher. Qualquer pessoa com ele vê e edita a mesma ficha, de qualquer aparelho. As mudanças aparecem para todos em poucos segundos.</p>
+  <div class="linha-link">
+    <input id="link-online" type="text" readonly aria-label="Link da ficha online">
+    <button class="btn-claro" id="copiar-link" type="button">Copiar</button>
+  </div>
+  <p class="aviso">Guarde o link: é a única chave da ficha. Quem não tiver o link não encontra a ficha.</p>
+  <div class="rodape-dialogo fim">
+    <button class="btn-claro" id="fechar-dialogo" type="button">Fechar</button>
+  </div>
+</dialog>
+<script src="dados/mestre.js"></script>
+<script src="assets/ficha.js"></script>
+</body>
+</html>

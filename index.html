@@ -33,11 +33,27 @@
         <span class="ir">Abrir ficha &rarr;</span>
       </div>
     </a>
+    <a class="cartao" href="raposa.html">
+      <div class="miniatura" style="background-image:url('img/raposa-1.jpg');background-position:100% 0;background-size:200% auto"></div>
+      <div class="corpo">
+        <h2>O Raposa</h2>
+        <p>Truques, contos absurdos e uma faca sempre à mão. Nem toda história é verdade.</p>
+        <span class="ir">Abrir ficha &rarr;</span>
+      </div>
+    </a>
     <a class="cartao" href="vilarejo.html">
       <div class="miniatura" style="background-image:url('img/vilarejo-1.jpg');background-position:0 0;background-size:115% auto"></div>
       <div class="corpo">
         <h2>O Vilarejo</h2>
         <p>A ficha compartilhada de Stonetop: melhorias, bens, residentes e vizinhos.</p>
+        <span class="ir">Abrir ficha &rarr;</span>
+      </div>
+    </a>
+    <a class="cartao" href="mestre.html">
+      <div class="miniatura" style="background-image:url('img/mestre-1.jpg');background-position:0 0;background-size:115% auto"></div>
+      <div class="corpo">
+        <h2>Ficha do Mestre</h2>
+        <p>Referência do Mestre, listas de conteúdo, perguntas em aberto e notas nos mapas de ameaças.</p>
         <span class="ir">Abrir ficha &rarr;</span>
       </div>
     </a>
@@ -67,7 +83,7 @@
     var li = document.createElement('li');
     var a = document.createElement('a');
     a.href = x.tipo + '.html#c=' + encodeURIComponent(x.c);
-    a.textContent = (x.nome || 'Sem nome') + ' · ' + x.titulo;
+    a.textContent = x.nome ? x.nome + ' · ' + x.titulo : x.titulo;
     var s = document.createElement('span');
     s.textContent = new Date(x.em).toLocaleDateString('pt-BR');
     li.appendChild(a); li.appendChild(s); ul.appendChild(li);
