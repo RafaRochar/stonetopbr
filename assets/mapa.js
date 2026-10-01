@@ -70,6 +70,7 @@
     escrever('stonetop:mapa:aba', m.id);
     document.querySelectorAll('.aba-mapa').forEach(b => b.setAttribute('aria-selected', b.dataset.mapa === m.id ? 'true' : 'false'));
     if (trocou) {
+      if (desenho) encerrarDesenho(); // um trajeto não atravessa mapas
       const limites = L.latLngBounds([0, 0], [m.h, m.w]);
       if (camada) camada.remove();
       camada = L.imageOverlay(m.img, limites).addTo(mapa);
@@ -118,6 +119,7 @@
       if (arrastando !== j.n) mk.setLatLng(paraLatLng(atual, j.x, j.y));
     }
     desenharLista(lista);
+    desenharRotas();
   }
 
   // ---------- painel: lista de jogadores
@@ -201,6 +203,240 @@
     const livre = CORES.find(c => !usadas.has(c)) || CORES[0];
     coresEl.querySelector(`[data-cor="${livre}"]`)?.click();
   });
+
+  // ---------- trajetos e tempo de viagem
+  // Trajeto = campo  p0.rota_<id> = "<mapa>;<terreno>;<cor>;<x,y x,y ...>;<nome>"  (x/y em %).
+  // O desenho não tem escala; o ritmo de cada mapa (pixels da imagem por hora de marcha)
+  // foi tirado medindo nos próprios mapas trajetos da tabela "Tempos de Viagem" da
+  // Ficha do Mestre (ex.: Stonetop -> Encruzilhada 3-4 h, -> Bosque Vermelho 4-6 h,
+  // -> Cavidades de Gordin 4 dias, -> Beirântano 10 dias). O mapa da vila não aparece
+  // na tabela: o ritmo dele é um palpite. Qualquer trajeto pode virar referência
+  // (botão ⌖), o que regrava  p0.ritmo_<mapa>  para o grupo todo.
+  const TERRENOS = [
+    { id: 'estrada', nome: 'Estrada ou trilha', f: 1 },
+    { id: 'aberto', nome: 'Campo aberto ou colinas', f: 1.5 },
+    { id: 'dificil', nome: 'Floresta, pântano ou montanha', f: 2 },
+  ];
+  const RITMO_PADRAO = { lar: 14000, arredores: 120, regiao: 18.75 };
+  const HORAS_POR_DIA = 8; // horas de marcha num dia de viagem
+  const CORES_ROTA = ['#8a3b1c', '#1b4f72', '#196f3d', '#6c3483', '#9a7d0a', '#0e6655'];
+
+  function lerRota(v) {
+    const m = /^([a-z]+);([a-z]+);(#[0-9a-f]{6});([-\d., ]*);([\s\S]*)$/i.exec(v || '');
+    if (!m) return null;
+    const pts = m[4].trim() ? m[4].trim().split(/\s+/).map(p => p.split(',').map(Number)).filter(p => p.length === 2 && p.every(Number.isFinite)) : [];
+    return { mapa: m[1], terreno: m[2], cor: m[3], pts, nome: m[5] };
+  }
+  const valorRota = (r) => `${r.mapa};${r.terreno};${r.cor};${r.pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')};${r.nome}`;
+  const rotas = () => Object.entries(estado)
+    .filter(([n]) => /^p0\.rota_/.test(n))
+    .map(([n, v]) => ({ n, ...lerRota(v) }))
+    .filter(r => r.mapa && r.pts.length > 1);
+
+  const ritmo = (idMapa) => {
+    const v = parseFloat(estado[`p0.ritmo_${idMapa}`]);
+    return v > 0 ? v : RITMO_PADRAO[idMapa];
+  };
+  function comprimentoPx(m, pts) {
+    let t = 0;
+    for (let i = 1; i < pts.length; i++) {
+      t += Math.hypot((pts[i][0] - pts[i - 1][0]) / 100 * m.w, (pts[i][1] - pts[i - 1][1]) / 100 * m.h);
+    }
+    return t;
+  }
+  function horasDe(r) {
+    const m = MAPAS.find(x => x.id === r.mapa);
+    const f = (TERRENOS.find(t => t.id === r.terreno) || TERRENOS[0]).f;
+    return comprimentoPx(m, r.pts) * f / ritmo(r.mapa);
+  }
+  const meio = (v) => { const r = Math.round(v * 2) / 2; const i = Math.floor(r); return (i ? String(i) : '') + (r % 1 ? '½' : '') || '½'; };
+  function formatarTempo(h, idMapa) {
+    if (!(h > 0)) return '—';
+    if (h < 1) { const min = Math.max(5, Math.round(h * 60 / 5) * 5); return `≈ ${min} min`; }
+    if (idMapa === 'regiao' || h >= HORAS_POR_DIA * 1.5) {
+      const d = h / HORAS_POR_DIA;
+      const txt = meio(d);
+      return `≈ ${txt} ${d <= 1.25 ? 'dia' : 'dias'}`;
+    }
+    return `≈ ${meio(h)} ${h <= 1.25 ? 'hora' : 'horas'}`;
+  }
+
+  const camadasRota = new Map(); // campo -> { grupo, assinatura }
+  function desenharRotas() {
+    const lista = rotas();
+    const aqui = new Map(lista.filter(r => r.mapa === atual.id).map(r => [r.n, r]));
+    for (const [n, c] of camadasRota) if (!aqui.has(n)) { c.grupo.remove(); camadasRota.delete(n); }
+    for (const [n, r] of aqui) {
+      const assinatura = `${estado[n]}|${ritmo(r.mapa)}`;
+      const antiga = camadasRota.get(n);
+      if (antiga && antiga.assinatura === assinatura) continue;
+      if (antiga) antiga.grupo.remove();
+      const lls = r.pts.map(([x, y]) => paraLatLng(atual, x, y));
+      const tempo = formatarTempo(horasDe(r), r.mapa);
+      const grupo = L.layerGroup([
+        L.polyline(lls, { color: '#fff', weight: 8, opacity: 0.9, interactive: false }),
+        L.polyline(lls, { color: r.cor, weight: 4, dashArray: r.terreno === 'estrada' ? null : '10 7' })
+          .bindTooltip(`${escapar(r.nome)} · ${tempo}`, { sticky: true }),
+        L.circleMarker(lls[0], { radius: 5, color: '#fff', weight: 2, fillColor: r.cor, fillOpacity: 1, interactive: false }),
+        L.marker(lls[lls.length - 1], {
+          interactive: false, keyboard: false,
+          icon: L.divIcon({ className: 'rota-rotulo', html: `<span style="--cor:${r.cor}">${escapar(r.nome)} · ${tempo}</span>`, iconSize: [0, 0] }),
+        }),
+      ]).addTo(mapa);
+      camadasRota.set(n, { grupo, assinatura });
+    }
+    desenharListaRotas(lista);
+  }
+
+  const listaRotasEl = document.getElementById('lista-rotas');
+  function desenharListaRotas(lista) {
+    listaRotasEl.innerHTML = '';
+    if (!lista.length) {
+      const li = document.createElement('li');
+      li.className = 'vazio';
+      li.textContent = 'Nenhum trajeto. Use “✏ Trajeto” no canto do mapa.';
+      listaRotasEl.appendChild(li);
+      return;
+    }
+    for (const r of lista) {
+      const li = document.createElement('li');
+      li.className = 'rota';
+      const m = MAPAS.find(x => x.id === r.mapa);
+      const topo = document.createElement('div');
+      topo.className = 'rota-topo';
+      const ir = document.createElement('button');
+      ir.type = 'button';
+      ir.className = 'jog-nome';
+      ir.innerHTML = `<span class="bolinha-cor" style="background:${r.cor}"></span><span class="txt"></span><small></small>`;
+      ir.querySelector('.txt').textContent = r.nome;
+      ir.querySelector('small').textContent = `${formatarTempo(horasDe(r), r.mapa)} · ${m.nome}`;
+      ir.title = 'Mostrar no mapa';
+      ir.addEventListener('click', () => {
+        mostrarMapa(r.mapa, { enquadrar: false });
+        mapa.flyToBounds(L.latLngBounds(r.pts.map(([x, y]) => paraLatLng(atual, x, y))).pad(0.3), { duration: 0.6 });
+      });
+      const acoes = document.createElement('span');
+      acoes.className = 'jog-acoes';
+      const botao = (txt, titulo, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.title = titulo; b.setAttribute('aria-label', `${titulo}: ${r.nome}`); b.addEventListener('click', fn); acoes.appendChild(b); };
+      botao('✎', 'Renomear', () => {
+        const novo = prompt('Nome do trajeto:', r.nome);
+        if (novo === null || !novo.trim()) return;
+        alterar(r.n, valorRota({ ...r, nome: novo.trim().slice(0, 60) }));
+      });
+      botao('⌖', 'Usar como referência de tempo', () => calibrar(r));
+      botao('×', 'Apagar trajeto', () => { if (confirm(`Apagar o trajeto “${r.nome}”?`)) alterar(r.n, null); });
+      topo.append(ir, acoes);
+
+      const sel = document.createElement('select');
+      sel.className = 'rota-terreno';
+      sel.setAttribute('aria-label', `Terreno de ${r.nome}`);
+      for (const t of TERRENOS) sel.add(new Option(`${t.nome}${t.f !== 1 ? ` (×${String(t.f).replace('.', ',')})` : ''}`, t.id, false, t.id === r.terreno));
+      sel.addEventListener('change', () => alterar(r.n, valorRota({ ...r, terreno: sel.value })));
+      li.append(topo, sel);
+      listaRotasEl.appendChild(li);
+    }
+  }
+
+  function calibrar(r) {
+    const resp = prompt(`Quanto tempo o trajeto “${r.nome}” leva de verdade?\nEx.: 4 horas, 2 dias, 30 min\n\nIsso ajusta o cálculo de todos os trajetos do mapa ${MAPAS.find(x => x.id === r.mapa).nome}, para o grupo todo.`);
+    if (!resp) return;
+    const m = /([\d]+(?:[.,]\d+)?)\s*(min|m|h|hora|horas|d|dia|dias)?/i.exec(resp.trim());
+    if (!m) { alert('Não entendi o tempo. Use algo como “4 horas” ou “2 dias”.'); return; }
+    const n = parseFloat(m[1].replace(',', '.'));
+    const u = (m[2] || (r.mapa === 'regiao' ? 'd' : 'h')).toLowerCase();
+    const horas = u.startsWith('m') ? n / 60 : u.startsWith('d') ? n * HORAS_POR_DIA : n;
+    if (!(horas > 0)) return;
+    const mm = MAPAS.find(x => x.id === r.mapa);
+    const f = (TERRENOS.find(t => t.id === r.terreno) || TERRENOS[0]).f;
+    alterar(`p0.ritmo_${r.mapa}`, String(+(comprimentoPx(mm, r.pts) * f / horas).toFixed(3)));
+  }
+
+  // desenho de um trajeto novo: clique ponto a ponto, depois Concluir
+  let desenho = null;
+  const controle = L.control({ position: 'topright' });
+  controle.onAdd = () => {
+    const div = L.DomUtil.create('div', 'controle-rota');
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    return div;
+  };
+  controle.addTo(mapa);
+  const painelRota = controle.getContainer();
+
+  function atualizarControle() {
+    if (!desenho) {
+      painelRota.innerHTML = '<button type="button" class="btn-rota" data-acao="iniciar" title="Desenhar um trajeto e ver o tempo de viagem">✏ Trajeto</button>';
+      return;
+    }
+    const r = { mapa: atual.id, terreno: desenho.terreno, pts: desenho.pts };
+    const info = desenho.pts.length < 2 ? 'Clique no mapa para marcar o caminho, ponto a ponto.' : `${formatarTempo(horasDe(r), atual.id)}`;
+    painelRota.innerHTML = `
+      <div class="rota-info"><strong>${desenho.pts.length} ${desenho.pts.length === 1 ? 'ponto' : 'pontos'}</strong> <span>${info}</span></div>
+      <select data-acao="terreno" aria-label="Terreno">${TERRENOS.map(t => `<option value="${t.id}"${t.id === desenho.terreno ? ' selected' : ''}>${t.nome}</option>`).join('')}</select>
+      <div class="rota-botoes">
+        <button type="button" data-acao="desfazer"${desenho.pts.length ? '' : ' disabled'}>Desfazer</button>
+        <button type="button" data-acao="cancelar">Cancelar</button>
+        <button type="button" class="ok" data-acao="concluir"${desenho.pts.length > 1 ? '' : ' disabled'}>Concluir</button>
+      </div>`;
+  }
+  painelRota.addEventListener('click', (e) => {
+    const acao = e.target.closest('[data-acao]')?.dataset.acao;
+    if (acao === 'iniciar') iniciarDesenho();
+    else if (acao === 'desfazer') { desenho.pts.pop(); redesenharPrevia(); }
+    else if (acao === 'cancelar') encerrarDesenho();
+    else if (acao === 'concluir') concluirDesenho();
+  });
+  painelRota.addEventListener('change', (e) => {
+    if (e.target.dataset.acao === 'terreno' && desenho) { desenho.terreno = e.target.value; atualizarControle(); }
+  });
+
+  function iniciarDesenho() {
+    desenho = { inicio: performance.now(), pts: [], terreno: 'estrada', linha: L.polyline([], { color: '#8a3b1c', weight: 4, dashArray: '2 8', interactive: false }).addTo(mapa), guia: L.polyline([], { color: '#8a3b1c', weight: 2, opacity: 0.6, dashArray: '4 6', interactive: false }).addTo(mapa) };
+    mapa.doubleClickZoom.disable();
+    document.getElementById('mapa').classList.add('desenhando');
+    atualizarControle();
+  }
+  function redesenharPrevia() {
+    desenho.linha.setLatLngs(desenho.pts.map(([x, y]) => paraLatLng(atual, x, y)));
+    if (!desenho.pts.length) desenho.guia.setLatLngs([]);
+    atualizarControle();
+  }
+  function encerrarDesenho() {
+    if (!desenho) return;
+    desenho.linha.remove(); desenho.guia.remove();
+    desenho = null;
+    mapa.doubleClickZoom.enable();
+    document.getElementById('mapa').classList.remove('desenhando');
+    atualizarControle();
+  }
+  function concluirDesenho() {
+    if (!desenho || desenho.pts.length < 2) return;
+    const usadas = new Set(rotas().map(r => r.cor));
+    const cor = CORES_ROTA.find(c => !usadas.has(c)) || CORES_ROTA[rotas().length % CORES_ROTA.length];
+    const nome = `Trajeto ${rotas().length + 1}`;
+    // o clique duplo que conclui também marca dois pontos no mesmo lugar: descarta os repetidos
+    const pts = desenho.pts.filter((p, i, a) => i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 0.3);
+    if (pts.length < 2) return;
+    const r = { mapa: atual.id, terreno: desenho.terreno, cor, pts: pts.slice(0, 300), nome };
+    encerrarDesenho();
+    alterar(`p0.rota_${Math.random().toString(36).slice(2, 10)}`, valorRota(r));
+  }
+  mapa.on('click', (e) => {
+    if (!desenho) return;
+    // o clique que abriu o desenho (no botão do canto) não é um ponto do trajeto
+    if (painelRota.contains(e.originalEvent.target) || performance.now() - desenho.inicio < 250) return;
+    const p = paraPct(atual, e.latlng);
+    desenho.pts.push([p.x, p.y]);
+    redesenharPrevia();
+  });
+  mapa.on('mousemove', (e) => {
+    if (!desenho || !desenho.pts.length) return;
+    const [x, y] = desenho.pts[desenho.pts.length - 1];
+    desenho.guia.setLatLngs([paraLatLng(atual, x, y), e.latlng]);
+  });
+  mapa.on('dblclick', () => { if (desenho && desenho.pts.length > 1) concluirDesenho(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && desenho) encerrarDesenho(); });
+  atualizarControle();
 
   // ---------- sincronização (mesmo protocolo das fichas)
   let semServidor = '';
